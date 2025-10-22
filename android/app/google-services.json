@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "497811681509",
+    "project_id": "sketchtravel-6928a",
+    "storage_bucket": "sketchtravel-6928a.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:497811681509:android:26877f3dc26c72b511a40c",
+        "android_client_info": {
+          "package_name": "com.example.sketch_travel"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCP6OvFjK6iImfMMbVFZ8wbZrG49mHLwEc"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
