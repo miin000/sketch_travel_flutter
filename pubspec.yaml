@@ -43,6 +43,18 @@ dependencies:
   timeago: ^3.7.1
   cached_network_image: ^3.4.1
 
+  #cloudinary
+  cloudinary_public: ^0.23.0
+
+  #cham tron
+  smooth_page_indicator: ^1.1.0
+
+  #rating
+  flutter_rating_bar: ^4.0.1
+
+  #theme
+  get_storage: ^2.1.1
+
 dev_dependencies:
   flutter_test:
     sdk: flutter

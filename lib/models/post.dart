@@ -2,44 +2,55 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 
 class Post {
   final String id;
-  final String userId;
-  final String locationId;
+  final String uid; // Đổi tên từ userId để nhất quán
+  final String username;
+  final String avatarUrl;
+  final String locationName; // Lưu tên địa điểm dưới dạng String
   final String description;
   final List<String> imageUrls;
   final Timestamp createdAt;
-  final int likeCount;
+  final List likes;
   final int commentCount;
 
   Post({
     required this.id,
-    required this.userId,
-    required this.locationId,
+    required this.uid,
+    required this.username,
+    required this.avatarUrl,
+    required this.locationName,
     required this.description,
     required this.imageUrls,
     required this.createdAt,
-    this.likeCount = 0,
+    required this.likes,
     this.commentCount = 0,
   });
 
   Map<String, dynamic> toJson() => {
     'id': id,
-    'userId': userId,
-    'locationId': locationId,
+    'uid': uid,
+    'username': username,
+    'avatarUrl': avatarUrl,
+    'locationName': locationName,
     'description': description,
     'imageUrls': imageUrls,
     'createdAt': createdAt,
-    'likeCount': likeCount,
+    'likes': likes,
     'commentCount': commentCount,
   };
 
-  factory Post.fromJson(Map<String, dynamic> json) => Post(
-    id: json['id'],
-    userId: json['userId'],
-    locationId: json['locationId'],
-    description: json['description'],
-    imageUrls: List<String>.from(json['imageUrls']),
-    createdAt: json['createdAt'],
-    likeCount: json['likeCount'] ?? 0,
-    commentCount: json['commentCount'] ?? 0,
-  );
+  factory Post.fromSnap(DocumentSnapshot snap) {
+    var data = snap.data() as Map<String, dynamic>;
+    return Post(
+      id: data['id'] ?? '',
+      uid: data['uid'] ?? '',
+      username: data['username'] ?? '',
+      avatarUrl: data['avatarUrl'] ?? '',
+      locationName: data['locationName'] ?? '',
+      description: data['description'] ?? '',
+      imageUrls: List<String>.from(data['imageUrls'] ?? []),
+      createdAt: data['createdAt'] ?? Timestamp.now(),
+      likes: data['likes'] ?? [],
+      commentCount: data['commentCount'] ?? 0,
+    );
+  }
 }

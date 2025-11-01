@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import '/constants.dart';
-import '/views/screens/add_photo_screen.dart';
-import '/views/screens/photo_screen.dart';
+import '/views/screens/post_feed_screen.dart';
 import '/views/screens/profile_screen.dart';
 import '/views/screens/search_screen.dart';
 import '/views/widgets/custom_icon.dart';
+import '/views/screens/add_post_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({Key? key}) : super(key: key);
@@ -16,16 +16,15 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   int pageIdx = 0;
 
-  // SỬA LỖI: Khởi tạo danh sách pages ở đây để đảm bảo an toàn
   late final List<Widget> pages;
 
   @override
   void initState() {
     super.initState();
     pages = [
-      PhotoScreen(),
+      PostFeedScreen(),
       SearchScreen(),
-      const AddPhotoScreen(),
+      const AddPostScreen(),
       const Center(child: Text('Messages Screen')), // Placeholder for messages
       ProfileScreen(uid: authController.user.uid),
     ];
@@ -53,12 +52,16 @@ class _HomeScreenState extends State<HomeScreen> {
                 size: 30,
               ),
               label: 'Home'),
+
+          // === SỬA LỖI TẠI ĐÂY ===
           BottomNavigationBarItem(
               icon: Icon(
-                Icons.search,
+                Icons.search, // Đổi từ notifications -> search
                 size: 30,
               ),
-              label: 'Search'),
+              label: 'Search'), // Đổi từ Notification -> Search
+          // =======================
+
           BottomNavigationBarItem(icon: CustomIcon(), label: ''),
           BottomNavigationBarItem(
               icon: Icon(

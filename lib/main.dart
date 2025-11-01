@@ -1,18 +1,27 @@
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:get_storage/get_storage.dart';
 import '/constants.dart';
 import 'controllers/auth_controller.dart';
-// SỬA LỖI: Import file firebase_options.dart vừa được tạo
+import 'controllers/cloudinary_controller.dart';
+import 'controllers/theme_controller.dart';
+import 'views/screens/auth/login_screen.dart';
+
 import 'firebase_options.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  // SỬA LỖI: Cung cấp 'options' cho hàm initializeApp
+  await GetStorage.init();
+
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
-  );
-  Get.put(AuthController());
+  ).then((value) {
+    Get.put(AuthController());
+    Get.put(CloudinaryController());
+    Get.put(ThemeController());
+  });
+
   runApp(const MyApp());
 }
 
@@ -21,20 +30,46 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final ThemeController themeController = Get.find();
+
     return GetMaterialApp(
       debugShowCheckedModeBanner: false,
       title: 'SketchTravel',
-      theme: ThemeData.dark().copyWith(
-        scaffoldBackgroundColor: backgroundColor,
-      ),
-      // Hiển thị màn hình chờ trong khi kiểm tra đăng nhập.
-      // AuthController sẽ tự động điều hướng.
-      home: const Scaffold(
-        body: Center(
-          child: CircularProgressIndicator(),
+
+      // === 6. Áp dụng Theme ===
+      theme: ThemeData.light(useMaterial3: true).copyWith(
+        brightness: Brightness.light,
+        scaffoldBackgroundColor: Colors.white,
+        appBarTheme: const AppBarTheme(
+          backgroundColor: Colors.white,
+          elevation: 1,
+          iconTheme: IconThemeData(color: Colors.black),
+          titleTextStyle: TextStyle(color: Colors.black, fontSize: 20),
         ),
+        bottomNavigationBarTheme: const BottomNavigationBarThemeData(
+          backgroundColor: Colors.white,
+          selectedItemColor: Colors.black,
+          unselectedItemColor: Colors.grey,
+        ),
+        //theme SÁNG
       ),
+      darkTheme: ThemeData.dark(useMaterial3: true).copyWith(
+          brightness: Brightness.dark,
+          scaffoldBackgroundColor: backgroundColor, // Dùng biến constants
+          appBarTheme: AppBarTheme(
+            backgroundColor: backgroundColor,
+            elevation: 0,
+          ),
+          bottomNavigationBarTheme: BottomNavigationBarThemeData(
+            backgroundColor: backgroundColor,
+            selectedItemColor: buttonColor, // Dùng biến constants
+            unselectedItemColor: Colors.white,
+          )
+        //theme TỐI
+      ),
+      themeMode: themeController.theme,
+
+      home: LoginScreen(),
     );
   }
 }
-

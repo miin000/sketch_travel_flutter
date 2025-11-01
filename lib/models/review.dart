@@ -2,16 +2,20 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 
 class Review {
   final String id;
-  final String locationId; // địa điểm được đánh giá
-  final String userId;     // ai đánh giá
-  final double rating;     // số sao 1-5
-  final String? content;   // nội dung đánh giá (có thể bỏ trống)
+  final String locationId;
+  final String userId;
+  final String username; // <-- THÊM
+  final String avatarUrl; // <-- THÊM
+  final double rating;
+  final String? content;
   final Timestamp createdAt;
 
   Review({
     required this.id,
     required this.locationId,
     required this.userId,
+    required this.username,
+    required this.avatarUrl,
     required this.rating,
     this.content,
     required this.createdAt,
@@ -21,6 +25,8 @@ class Review {
     'id': id,
     'locationId': locationId,
     'userId': userId,
+    'username': username,
+    'avatarUrl': avatarUrl,
     'rating': rating,
     'content': content,
     'createdAt': createdAt,
@@ -30,6 +36,8 @@ class Review {
     id: json['id'],
     locationId: json['locationId'],
     userId: json['userId'],
+    username: json['username'] ?? '',
+    avatarUrl: json['avatarUrl'] ?? '',
     rating: (json['rating'] ?? 0).toDouble(),
     content: json['content'],
     createdAt: json['createdAt'],
