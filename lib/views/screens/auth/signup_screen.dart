@@ -61,7 +61,7 @@ class SignupScreen extends StatelessWidget {
               const SizedBox(height: 25),
               TextInputField(
                 controller: _usernameController,
-                labelText: 'Username',
+                labelText: 'Tên đầy đủ',
                 icon: Icons.person,
               ),
               const SizedBox(height: 25),

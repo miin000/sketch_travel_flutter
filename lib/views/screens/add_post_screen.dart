@@ -4,6 +4,8 @@ import 'package:get/get.dart';
 import 'package:smooth_page_indicator/smooth_page_indicator.dart';
 import '/constants.dart';
 import '/controllers/upload_post_controller.dart';
+import '/models/osm_location.dart';
+import '/views/screens/search_screen.dart';
 
 class AddPostScreen extends StatefulWidget {
   const AddPostScreen({Key? key}) : super(key: key);
@@ -15,15 +17,23 @@ class AddPostScreen extends StatefulWidget {
 class _AddPostScreenState extends State<AddPostScreen> {
   final UploadPostController _uploadPostController = Get.put(UploadPostController());
   final TextEditingController _descriptionController = TextEditingController();
-  final TextEditingController _locationController = TextEditingController();
   final PageController _pageController = PageController();
 
   @override
   void dispose() {
     _descriptionController.dispose();
-    _locationController.dispose();
     _pageController.dispose();
     super.dispose();
+  }
+
+  void _openLocationPicker() async {
+    // Đẩy SearchScreen ở chế độ picker
+    final result = await Get.to(() => SearchScreen(isPickerMode: true));
+
+    // Nhận kết quả trả về
+    if (result != null && result is OsmLocation) {
+      _uploadPostController.selectLocation(result);
+    }
   }
 
   @override
@@ -33,21 +43,38 @@ class _AddPostScreenState extends State<AddPostScreen> {
         title: Text('Đăng bài viết mới'),
         backgroundColor: backgroundColor,
         actions: [
-          IconButton(
-            onPressed: () {
-              if (_descriptionController.text.isNotEmpty &&
-                  _locationController.text.isNotEmpty) {
+          Obx(() {
+            if (_uploadPostController.isLoading.value) {
+              return Padding(
+                padding: const EdgeInsets.only(right: 16.0),
+                child: Center(
+                  child: SizedBox(
+                    width: 20,
+                    height: 20,
+                    // Dùng màu của theme (Trắng ở Dark mode, Đen ở Light mode)
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: Theme.of(context).iconTheme.color,
+                    ),
+                  ),
+                ),
+              );
+            }
+
+            return IconButton(
+              onPressed: () {
+                if (_descriptionController.text.isEmpty) {
+                  Get.snackbar('Lỗi', 'Vui lòng nhập mô tả');
+                  return;
+                }
+                // Controller sẽ tự kiểm tra location
                 _uploadPostController.uploadPost(
                   _descriptionController.text.trim(),
-                  _locationController.text.trim(),
                 );
-              } else {
-                Get.snackbar(
-                    'Lỗi', 'Vui lòng nhập đủ Mô tả và Địa điểm');
-              }
-            },
-            icon: Icon(Icons.check),
-          )
+              },
+              icon: Icon(Icons.check),
+            );
+          }),
         ],
       ),
       body: SingleChildScrollView(
@@ -138,19 +165,45 @@ class _AddPostScreenState extends State<AddPostScreen> {
               ),
               SizedBox(height: 20),
               // TextField cho Địa điểm
-              TextField(
-                controller: _locationController,
-                decoration: InputDecoration(
-                  hintText: 'Thêm địa điểm (ví dụ: Vịnh Hạ Long)',
-                  prefixIcon: Icon(Icons.location_on_outlined),
-                  border: OutlineInputBorder(
-                    borderSide: BorderSide(color: borderColor),
+              Obx(() {
+                final selectedLocation = _uploadPostController.selectedLocation;
+                return ListTile(
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(4),
+                      side: BorderSide(
+                        color: selectedLocation != null
+                            ? (buttonColor ?? Colors.red)
+                            : borderColor,
+                        width: selectedLocation != null ? 2 : 1,
+                      )
                   ),
-                  focusedBorder: OutlineInputBorder(
-                    borderSide: BorderSide(color: buttonColor!),
+                  leading: Icon(
+                      Icons.location_on,
+                      color: selectedLocation != null
+                          ? buttonColor
+                          : Colors.grey
                   ),
-                ),
-              ),
+                  title: Text(
+                    selectedLocation?.name ?? 'Thêm địa điểm (ví dụ: Vịnh Hạ Long)',
+                    style: TextStyle(
+                      color: selectedLocation != null
+                          ? (context.theme.brightness == Brightness.dark ? Colors.white : Colors.black)
+                          : Colors.grey,
+                      fontWeight: selectedLocation != null
+                          ? FontWeight.bold
+                          : FontWeight.normal,
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  trailing: (selectedLocation != null)
+                      ? IconButton( // Nút "X" để xóa địa điểm
+                    icon: Icon(Icons.close),
+                    onPressed: () => _uploadPostController.clearSelectedLocation(),
+                  )
+                      : null,
+                  onTap: _openLocationPicker, // <-- Gọi hàm mở search
+                );
+              }),
             ],
           ),
         ),

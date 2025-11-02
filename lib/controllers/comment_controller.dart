@@ -16,7 +16,7 @@ class CommentController extends GetxController {
   getComment() async {
     _comments.bindStream(
       firestore
-          .collection('posts') // <-- SỬA: từ 'photos' sang 'posts'
+          .collection('posts')
           .doc(_postId)
           .collection('comments')
           .orderBy('createdAt', descending: true)
@@ -40,7 +40,7 @@ class CommentController extends GetxController {
         var userData = userDoc.data() as Map<String, dynamic>;
 
         var allDocs = await firestore
-            .collection('posts') // <-- SỬA: 'posts'
+            .collection('posts')
             .doc(_postId)
             .collection('comments')
             .get();
@@ -52,14 +52,14 @@ class CommentController extends GetxController {
           id: commentId,
           postId: _postId,
           userId: authController.user.uid,
-          username: userData['username'] ?? '', // <-- THÊM
-          avatarUrl: userData['avatarUrl'] ?? '', // <-- THÊM
+          username: userData['username'] ?? '',
+          avatarUrl: userData['avatarUrl'] ?? '',
           content: commentText.trim(),
           createdAt: Timestamp.now(),
         );
 
         await firestore
-            .collection('posts') // <-- SỬA: 'posts'
+            .collection('posts')
             .doc(_postId)
             .collection('comments')
             .doc(commentId)
@@ -67,8 +67,8 @@ class CommentController extends GetxController {
 
         // Tăng số lượng comment cho bài viết (post)
         DocumentSnapshot doc =
-        await firestore.collection('posts').doc(_postId).get(); // <-- SỬA
-        await firestore.collection('posts').doc(_postId).update({ // <-- SỬA
+        await firestore.collection('posts').doc(_postId).get();
+        await firestore.collection('posts').doc(_postId).update({
           'commentCount': (doc.data()! as dynamic)['commentCount'] + 1,
         });
       }

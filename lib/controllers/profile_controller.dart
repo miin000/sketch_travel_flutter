@@ -156,17 +156,26 @@ class ProfileController extends GetxController {
     }
   }
 
-  // Hàm mới để Sửa tên
+  // Hàm để Sửa tên
   Future<void> updateUserName(String newName) async {
     if (newName.isEmpty) {
       Get.snackbar('Lỗi', 'Tên không thể để trống');
       return;
     }
     try {
+      // === TẠO TỪ KHÓA MỚI ===
+      String newUsername = newName.toLowerCase().replaceAll(' ', '');
+      List<String> nameParts = newName.toLowerCase().split(' ');
+      List<String> keywords = [newUsername, ...nameParts];
+
       await firestore.collection('users').doc(_uid.value).update({
         'name': newName,
-        'username': newName.toLowerCase().replaceAll(' ', ''),
+        'username': newUsername,
+        'displayName': newName,
+        'searchKeywords': keywords, // <-- Cập nhật mảng từ khóa
       });
+      // =======================
+
       await getUserData(); // Tải lại
       Get.back(); // Đóng dialog
       Get.snackbar('Thành công', 'Đã cập nhật tên');

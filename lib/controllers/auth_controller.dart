@@ -1,6 +1,5 @@
-import 'dart:typed_data'; // Đảm bảo dùng Uint8List
+import 'dart:typed_data';
 import 'package:firebase_auth/firebase_auth.dart';
-// import 'package:firebase_storage/firebase_storage.dart'; // <-- KHÔNG CẦN NỮA
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:image_picker/image_picker.dart';
@@ -9,7 +8,7 @@ import '/constants.dart';
 import '/models/user.dart' as model;
 import '/views/screens/auth/login_screen.dart';
 import '/views/screens/home_screen.dart';
-import 'cloudinary_controller.dart'; // <-- THÊM IMPORT NÀY
+import 'cloudinary_controller.dart';
 
 class AuthController extends GetxController {
   static AuthController instance = Get.find();
@@ -49,21 +48,16 @@ class AuthController extends GetxController {
     }
   }
 
-  // === HÀM NÀY KHÔNG CẦN NỮA ===
-  // Future<String> _uploadToStorage(Uint8List imageBytes) async {
-  //   Reference ref = firebaseStorage
-  //       .ref()
-  //       ...
-  // }
-  // ===============================
-
   Future<void> registerUser(
-      String username, String email, String password, Uint8List? imageBytes) async {
+      String fullName, // 1. Đã đổi tên biến (từ 'username')
+      String email,
+      String password,
+      Uint8List? imageBytes) async {
 
     UserCredential? cred;
 
     try {
-      if (username.isNotEmpty &&
+      if (fullName.isNotEmpty && // Sửa ở đây
           email.isNotEmpty &&
           password.isNotEmpty &&
           imageBytes != null) {
@@ -73,21 +67,23 @@ class AuthController extends GetxController {
           password: password,
         );
 
-        // === SỬA TẠI ĐÂY ===
-        // Tải ảnh lên Cloudinary thay vì Firebase Storage
-        print('AuthController: Đang tải ảnh lên Cloudinary...');
         String downloadUrl = await CloudinaryController.instance.uploadImage(imageBytes);
-        print('AuthController: Đã tải lên. URL: $downloadUrl');
-        // ==================
+
+        String newName = fullName;
+        String newUsername = newName.toLowerCase().replaceAll(' ', '');
+        List<String> nameParts = newName.toLowerCase().split(' ');
+        List<String> keywords = [newUsername, ...nameParts];
 
         model.User newUser = model.User(
           uid: cred.user!.uid,
           email: email,
-          username: username,
-          displayName: username,
-          avatarUrl: downloadUrl, // Dùng URL từ Cloudinary
+          username: newUsername,
+          displayName: newName,
+          name: newName,
+          avatarUrl: downloadUrl,
           bio: '',
           createdAt: Timestamp.now(),
+          searchKeywords: keywords,
         );
 
         await firestore

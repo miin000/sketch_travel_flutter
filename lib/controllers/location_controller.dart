@@ -3,6 +3,7 @@ import 'package:get/get.dart';
 import '/constants.dart';
 import '/models/location.dart';
 import '/models/review.dart';
+import '/models/post.dart';
 
 class LocationController extends GetxController {
   final Rx<Location?> _location = Rx<Location?>(null);
@@ -14,7 +15,10 @@ class LocationController extends GetxController {
   final Rx<bool> _isLoading = true.obs;
   bool get isLoading => _isLoading.value;
 
-  String _locationId = ""; // Sẽ là tên địa điểm, ví dụ: "Suối mỡ"
+  final Rx<List<Post>> _posts = Rx<List<Post>>([]);
+  List<Post> get posts => _posts.value;
+
+  String _locationId = "";
 
   // Hàm này được gọi từ LocationScreen
   Future<void> updateLocationId(String locationName) async {
@@ -38,6 +42,19 @@ class LocationController extends GetxController {
         _location.value = newLocation;
       }
 
+      _posts.bindStream(
+        firestore
+            .collection('posts')
+            .where('locationName', isEqualTo: _locationId)
+            .orderBy('createdAt', descending: true)
+            .snapshots()
+            .map((QuerySnapshot query) {
+          return query.docs
+              .map((doc) => Post.fromSnap(doc))
+              .toList();
+        }),
+      );
+
       _reviews.bindStream(
         firestore
             .collection('locations')
@@ -53,7 +70,7 @@ class LocationController extends GetxController {
       );
       _isLoading.value = false;
 
-    } catch (e) { // <-- THÊM CATCH
+    } catch (e) {
       _isLoading.value = false;
       print('Lỗi nghiêm trọng khi tải LocationController: ${e.toString()}');
       Get.snackbar('Lỗi tải địa điểm', e.toString());

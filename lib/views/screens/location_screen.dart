@@ -6,6 +6,8 @@ import '/constants.dart';
 import '/controllers/location_controller.dart';
 import '/controllers/location_favorite_controller.dart';
 import '/models/review.dart';
+import '/models/post.dart';
+import '/views/widgets/post_grid_item.dart';
 
 class LocationScreen extends StatefulWidget {
   final String locationName; // Nhận tên địa điểm từ PostFeedScreen
@@ -61,7 +63,6 @@ class _LocationScreenState extends State<LocationScreen>
         return NestedScrollView(
           headerSliverBuilder: (context, innerBoxIsScrolled) {
             return [
-              // Phần 1: Thông tin địa điểm
               SliverToBoxAdapter(
                 child: Padding(
                   padding: const EdgeInsets.all(16.0),
@@ -91,7 +92,6 @@ class _LocationScreenState extends State<LocationScreen>
                         ],
                       ),
                       SizedBox(height: 16),
-                      // Tạm thời dùng 'province' cho địa chỉ
                       _infoRow(Icons.location_on_outlined,
                           '${location.province}, Việt Nam'),
                       // TODO: Thêm thông tin khoảng cách (cần tính toán)
@@ -103,7 +103,6 @@ class _LocationScreenState extends State<LocationScreen>
                   ),
                 ),
               ),
-              // Phần 2: Thanh Tab
               SliverPersistentHeader(
                 delegate: _SliverAppBarDelegate(
                   TabBar(
@@ -122,13 +121,13 @@ class _LocationScreenState extends State<LocationScreen>
               ),
             ];
           },
-          // Phần 3: Nội dung Tab
           body: TabBarView(
             controller: _tabController,
             children: [
               // Tab 1: Đánh giá
               _buildReviewsTab(),
-              // Tab 2: Bài đăng (TODO)
+              // Tab 2: Bài đăng
+              _buildPostsTab(),
               Center(
                   child: Text(
                       'Danh sách bài đăng về ${widget.locationName} (Sắp có)')),
@@ -272,6 +271,32 @@ class _LocationScreenState extends State<LocationScreen>
         ],
       ),
     );
+  }
+
+  Widget _buildPostsTab() {
+    return Obx(() {
+      if (_locationController.posts.isEmpty) {
+        return Center(child: Text('Chưa có bài đăng nào về địa điểm này.'));
+      }
+      // Dùng GridView giống hệt ProfileScreen
+      return GridView.builder(
+        padding: const EdgeInsets.all(2),
+        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+          crossAxisCount: 3,
+          crossAxisSpacing: 2,
+          mainAxisSpacing: 2,
+          childAspectRatio: 1,
+        ),
+        itemCount: _locationController.posts.length,
+        itemBuilder: (context, index) {
+          Post post = _locationController.posts[index];
+          return PostGridItem(
+            imageUrl: post.imageUrls.first, // Chỉ lấy ảnh đầu
+            likeCount: post.likes.length,
+          );
+        },
+      );
+    });
   }
 
   // Widget cho một item review

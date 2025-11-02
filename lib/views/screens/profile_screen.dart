@@ -4,8 +4,9 @@ import 'package:get/get.dart';
 import '/constants.dart';
 import '/controllers/profile_controller.dart';
 import '/models/post.dart';
-import '/views/screens/settings_screen.dart'; // Import màn hình Cài đặt
-import '/views/screens/location_screen.dart'; // Import màn hình Location
+import '/views/screens/settings_screen.dart';
+import '/views/screens/location_screen.dart';
+import '/views/widgets/post_grid_item.dart';
 
 class ProfileScreen extends StatefulWidget {
   final String uid;
@@ -256,8 +257,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
       itemCount: controller.postedList.length,
       itemBuilder: (context, index) {
         Post post = controller.postedList[index];
-        return _buildGridPostItem(
-          imageUrl: post.imageUrls.first, // Chỉ lấy ảnh đầu
+        return PostGridItem(
+          imageUrl: post.imageUrls.first,
           likeCount: post.likes.length,
         );
       },
@@ -280,46 +281,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
       itemCount: controller.likedList.length,
       itemBuilder: (context, index) {
         Post post = controller.likedList[index];
-        return _buildGridPostItem(
+        return PostGridItem(
           imageUrl: post.imageUrls.first,
           likeCount: post.likes.length,
         );
       },
-    );
-  }
-
-  // Widget cho mỗi ô ảnh trong Grid (có số tim)
-  Widget _buildGridPostItem({required String imageUrl, required int likeCount}) {
-    return Stack(
-      fit: StackFit.expand,
-      children: [
-        CachedNetworkImage(
-          imageUrl: imageUrl,
-          fit: BoxFit.cover,
-        ),
-        // Hiển thị số lượng tim
-        Positioned(
-          bottom: 5,
-          left: 5,
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-            decoration: BoxDecoration(
-              color: Colors.black.withOpacity(0.6),
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: Row(
-              children: [
-                Icon(Icons.favorite, color: Colors.white, size: 14),
-                const SizedBox(width: 4),
-                Text(
-                  likeCount.toString(),
-                  style: const TextStyle(color: Colors.white, fontSize: 12),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ],
     );
   }
 

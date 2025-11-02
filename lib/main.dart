@@ -10,6 +10,8 @@ import 'views/screens/auth/login_screen.dart';
 
 import 'firebase_options.dart';
 
+import 'package:flutter/gestures.dart';
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await GetStorage.init();
@@ -36,7 +38,6 @@ class MyApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       title: 'SketchTravel',
 
-      // === 6. Áp dụng Theme ===
       theme: ThemeData.light(useMaterial3: true).copyWith(
         brightness: Brightness.light,
         scaffoldBackgroundColor: Colors.white,
@@ -68,6 +69,15 @@ class MyApp extends StatelessWidget {
         //theme TỐI
       ),
       themeMode: themeController.theme,
+
+      scrollBehavior: const MaterialScrollBehavior().copyWith(
+        dragDevices: {
+          PointerDeviceKind.mouse,
+          PointerDeviceKind.touch,
+          PointerDeviceKind.stylus,
+          PointerDeviceKind.unknown,
+        },
+      ),
 
       home: LoginScreen(),
     );

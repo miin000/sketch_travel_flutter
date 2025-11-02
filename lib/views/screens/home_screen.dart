@@ -19,16 +19,16 @@ class _HomeScreenState extends State<HomeScreen> {
   late final List<Widget> pages;
 
   @override
-  void initState() {
-    super.initState();
-    pages = [
-      PostFeedScreen(),
-      SearchScreen(),
-      const AddPostScreen(),
-      const Center(child: Text('Messages Screen')), // Placeholder for messages
-      ProfileScreen(uid: authController.user.uid),
-    ];
-  }
+  // void initState() {
+  //   super.initState();
+  //   pages = [
+  //     PostFeedScreen(),
+  //     SearchScreen(),
+  //     const AddPostScreen(),
+  //     const Center(child: Text('Messages Screen')), // Placeholder for messages
+  //     ProfileScreen(uid: authController.user.uid),
+  //   ];
+  // }
 
 
   @override
@@ -53,14 +53,12 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
               label: 'Home'),
 
-          // === SỬA LỖI TẠI ĐÂY ===
           BottomNavigationBarItem(
               icon: Icon(
-                Icons.search, // Đổi từ notifications -> search
+                Icons.search,
                 size: 30,
               ),
-              label: 'Search'), // Đổi từ Notification -> Search
-          // =======================
+              label: 'Search'),
 
           BottomNavigationBarItem(icon: CustomIcon(), label: ''),
           BottomNavigationBarItem(
@@ -68,7 +66,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 Icons.message,
                 size: 30,
               ),
-              label: 'Messages'),
+              label: 'Inbox'),
           BottomNavigationBarItem(
               icon: Icon(
                 Icons.person,
