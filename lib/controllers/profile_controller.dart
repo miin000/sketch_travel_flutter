@@ -3,38 +3,45 @@ import 'package:get/get.dart';
 import '/constants.dart';
 import '/models/post.dart';
 import '/models/favorite_location.dart';
+import '/models/app_notification.dart';
 
 class ProfileController extends GetxController {
-  // Dữ liệu User (cho header)
-  final Rx<Map<String, dynamic>> _user = Rx<Map<String, dynamic>>({});
-  Map<String, dynamic> get user => _user.value;
-  Rx<String> _uid = "".obs;
+  // === SỬA LỖI UI KHÔNG UPDATE ===
+  // Thay vì Rx<Map?>, chúng ta dùng RxMap.
+  // RxMap là một Map "thông minh" tự thông báo khi có thay đổi.
+  final RxMap<String, dynamic> _user = RxMap<String, dynamic>();
+  Map<String, dynamic> get user => _user;
+  // ===============================
 
-  // Dữ liệu cho 3 tab
+  final Rx<String> _uid = "".obs;
   final Rx<List<Post>> _postedList = Rx<List<Post>>([]);
   final Rx<List<Post>> _likedList = Rx<List<Post>>([]);
-  final Rx<List<FavoriteLocation>> _favoritedLocationsList = Rx<List<FavoriteLocation>>([]);
-
+  final Rx<List<FavoriteLocation>> _favoritedLocationsList =
+  Rx<List<FavoriteLocation>>([]);
   List<Post> get postedList => _postedList.value;
   List<Post> get likedList => _likedList.value;
-  List<FavoriteLocation> get favoritedLocationsList => _favoritedLocationsList.value;
+  List<FavoriteLocation> get favoritedLocationsList =>
+      _favoritedLocationsList.value;
 
-  // Trạng thái loading
-  bool _isLoading = false;
-  bool get isLoading => _isLoading;
+  final Rx<bool> _isLoading = false.obs;
+  bool get isLoading => _isLoading.value;
+
   final Rx<bool> _isFetchingTabs = true.obs;
   bool get isFetchingTabs => _isFetchingTabs.value;
 
   updateUserId(String uid) {
+    if (uid.isEmpty) {
+      return;
+    }
     _uid.value = uid;
-    // Tải đồng thời tất cả dữ liệu
-    getUserData(); // Lấy thông tin header
-    fetchTabContent(); // Lấy nội dung cho cả 3 tab
+    // Xóa dữ liệu cũ (nếu có) trước khi tải
+    _user.clear();
+    getUserData();
+    fetchTabContent();
   }
 
-  // Lấy thông tin Header (Stats: Following, Followers, Likes)
   getUserData() async {
-    List<String> postThumbnails = []; // Chỉ ảnh đầu tiên của mỗi bài post
+    List<String> postThumbnails = [];
     var myPosts = await firestore
         .collection('posts')
         .where('uid', isEqualTo: _uid.value)
@@ -54,116 +61,216 @@ class ProfileController extends GetxController {
 
     DocumentSnapshot userDoc =
     await firestore.collection('users').doc(_uid.value).get();
-    final userData = userDoc.data() as Map<String, dynamic>?;
 
-    if (userData == null) {
+    final data = userDoc.data();
+    if (data == null || data is! Map) {
       print('ProfileController: Không tìm thấy user document (uid: ${_uid.value}).');
       return;
     }
+    final userData = Map<String, dynamic>.from(data as Map<dynamic, dynamic>);
 
     String name = userData['name'] ?? userData['username'];
     String profilePhoto = userData['profilePhoto'] ?? userData['avatarUrl'];
     int followers = 0;
     int following = 0;
-    bool isFollowing =false;
+    int friends = 0;
 
-    var followerDoc = await firestore
-        .collection('users')
-        .doc(_uid.value)
-        .collection('followers')
-        .get();
-    var followingDoc = await firestore
-        .collection('users')
-        .doc(_uid.value)
-        .collection('following')
-        .get();
-    followers = followerDoc.docs.length;
-    following = followingDoc.docs.length;
+    var friendsList = userData['friends'] as List? ?? [];
+    friends = friendsList.length;
 
-    var isFollowingDoc = await firestore
-        .collection('users')
-        .doc(_uid.value)
-        .collection('followers')
-        .doc(authController.user.uid)
-        .get();
-    isFollowing = isFollowingDoc.exists;
+    List followersList = List.from(userData['followers'] ?? []);
+    bool isFollowing = followersList.contains(authController.userAccount.uid);
 
-    _user.value={
-      'followers':followers.toString(),
-      'following':following.toString(),
-      'isFollowing':isFollowing,
-      'likes':likes.toString(),
-      'profilePhoto':profilePhoto,
-      'name':name,
+    DocumentSnapshot myUserDoc = await firestore
+        .collection('users')
+        .doc(authController.userAccount.uid)
+        .get();
+
+    final myData = myUserDoc.data() as Map<String, dynamic>? ?? {};
+    List followingList = List.from(myData['following'] ?? []);
+    bool isFollowedBy = followingList.contains(_uid.value);
+
+    followers = followersList.length;
+    following = followingList.length;
+
+    _user.addAll({
+      'followers': followers.toString(),
+      'following': following.toString(),
+      'isFollowing': isFollowing,
+      'isFollowedBy': isFollowedBy,
+      'friends': friends.toString(),
+      'likes': likes.toString(),
+      'profilePhoto': profilePhoto,
+      'name': name,
       'username': userData['username'] ?? '',
       'postThumbnails': postThumbnails,
-    };
-    update();
+    });
+    _user.refresh();
   }
 
-  // Tải nội dung cho các tab (Đã thích, Đã yêu thích)
   fetchTabContent() async {
     _isFetchingTabs.value = true;
+    try {
+      var likedPostsQuery = await firestore
+          .collection('posts')
+          .where('likes', arrayContains: _uid.value)
+          .get();
+      _likedList.value =
+          likedPostsQuery.docs.map((doc) => Post.fromSnap(doc)).toList();
 
-    // 1. Tải các bài viết đã thích
-    var likedPostsQuery = await firestore
-        .collection('posts')
-    // === SỬA LỖI TẠI ĐÂY (Dòng 111) ===
-        .where('likes', arrayContains: _uid.value)
-    // ===================================
-        .get();
-    _likedList.value = likedPostsQuery.docs.map((doc) => Post.fromSnap(doc)).toList();
+      var favLocationsQuery = await firestore
+          .collection('favoriteLocations')
+          .where('userId', isEqualTo: _uid.value)
+          .get();
 
-    // 2. Tải các địa điểm đã yêu thích
-    var favLocationsQuery = await firestore
-        .collection('favoriteLocations')
-        .where('userId', isEqualTo: _uid.value)
-        .get();
-    _favoritedLocationsList.value = favLocationsQuery.docs
-        .map((doc) => FavoriteLocation.fromJson(doc.data()))
-        .toList();
-
+      _favoritedLocationsList.value = favLocationsQuery.docs
+          .map((doc) {
+        final data = doc.data();
+        if (data == null || data is! Map) return null;
+        return FavoriteLocation.fromJson(
+            Map<String, dynamic>.from(data as Map<dynamic, dynamic>));
+      })
+          .whereType<FavoriteLocation>()
+          .toList();
+    } catch (e) {
+      print('Lỗi fetchTabContent: $e');
+      Get.snackbar('Lỗi tải Tab', e.toString());
+    }
     _isFetchingTabs.value = false;
   }
 
-  // Hàm Follow (đã sửa lỗi spam)
-  followUser() async {
-    if (_isLoading) return;
+  Future<void> followUser() async {
+    if (_isLoading.value || _uid.value.isEmpty) return;
+
     try {
-      _isLoading = true;
-      update();
+      _isLoading.value = true;
 
-      var doc = await firestore.collection('users').doc(_uid.value).collection('followers')
-          .doc(authController.user.uid).get();
+      final String currentUid = authController.userAccount.uid;
+      final String targetUid = _uid.value;
 
-      if(!doc.exists){
-        await firestore.collection('users').doc(_uid.value).collection('followers')
-            .doc(authController.user.uid).set({});
-        await firestore.collection('users').doc(authController.user.uid).collection('following')
-            .doc(_uid.value).set({});
-      }else{
-        await firestore.collection('users').doc(_uid.value).collection('followers')
-            .doc(authController.user.uid).delete();
-        await firestore.collection('users').doc(authController.user.uid).collection('following')
-            .doc(_uid.value).delete();
+      final userRef = firestore.collection('users').doc(targetUid);
+      final currentUserRef = firestore.collection('users').doc(currentUid);
+
+      final userSnap = await userRef.get();
+      final currentSnap = await currentUserRef.get();
+
+      final userData = userSnap.data() != null
+          ? Map<String, dynamic>.from(userSnap.data() as Map)
+          : {};
+      final myData = currentSnap.data() != null
+          ? Map<String, dynamic>.from(currentSnap.data() as Map)
+          : {};
+
+      List followers = List.from(userData['followers'] ?? []);
+      List following = List.from(myData['following'] ?? []);
+
+      if (followers.contains(currentUid)) {
+        //Unfollow
+        await userRef.update({
+          'followers': FieldValue.arrayRemove([currentUid])
+        });
+        await currentUserRef.update({
+          'following': FieldValue.arrayRemove([targetUid])
+        });
+
+        // xóa bạn bè
+        await currentUserRef.update({'friends': FieldValue.arrayRemove([targetUid])});
+        await userRef.update({'friends': FieldValue.arrayRemove([currentUid])});
+      } else {
+        //Follow
+        await userRef.set({
+          'followers': FieldValue.arrayUnion([currentUid])
+        }, SetOptions(merge: true));
+
+        await currentUserRef.set({
+          'following': FieldValue.arrayUnion([targetUid])
+        }, SetOptions(merge: true));
+
+        bool isFollowedBy = false;
+        if (userData['following'] != null &&
+            (userData['following'] as List).contains(currentUid)) {
+          isFollowedBy = true;
+        }
+
+        if (isFollowedBy) {
+          await currentUserRef.set({
+            'friends': FieldValue.arrayUnion([targetUid])
+          }, SetOptions(merge: true));
+
+          await userRef.set({
+            'friends': FieldValue.arrayUnion([currentUid])
+          }, SetOptions(merge: true));
+        }
+
+        await _createFollowNotification(targetUid);
       }
-      await getUserData(); // Tải lại stats
-    } catch (e) {
+
+      await getUserData();
+      _user.refresh();
+    } catch (e, st) {
+      print('❌ followUser error: $e');
+      print(st);
       Get.snackbar('Lỗi', e.toString());
     } finally {
-      _isLoading = false;
-      update();
+      _isLoading.value = false; // Luôn tắt loading
     }
   }
 
-  // Hàm để Sửa tên
+  //Xóa bài viết
+  Future<void> deletePostAndRefresh(String postId) async {
+    try {
+      await firestore.collection('posts').doc(postId).delete();
+      _postedList.value.removeWhere((p) => p.id == postId);
+      _postedList.refresh(); // 🔹 Cập nhật UI
+      Get.snackbar('Thành công', 'Bài viết đã bị xóa');
+    } catch (e) {
+      Get.snackbar('Lỗi', 'Không thể xóa bài viết: $e');
+    }
+  }
+
+
+  Future<void> _createFollowNotification(String targetUid) async {
+    try {
+      final String myUid = authController.userAccount.uid;
+      final userDoc = await firestore.collection('users').doc(myUid).get();
+
+      final raw = userDoc.data();
+      if (raw == null) return;
+
+      final myData = Map<String, dynamic>.from(raw as Map<dynamic, dynamic>);
+
+      final notif = {
+        'id': 'follow_${myUid}_$targetUid',
+        'receiverId': targetUid,
+        'senderId': myUid,
+        'senderName': myData['username'] ?? 'Một người',
+        'senderAvatar': myData['avatarUrl'] ?? '',
+        'type': 'follow',
+        'message': 'đã bắt đầu theo dõi bạn',
+        'createdAt': Timestamp.now(),
+        'isRead': false,
+      };
+
+      await firestore
+          .collection('notifications')
+          .doc(targetUid)
+          .collection('userNotifications')
+          .doc(notif['id'])
+          .set(notif);
+
+      print('✅ Follow notification created for $targetUid');
+    } catch (e, st) {
+      print('❌ Lỗi tạo thông báo follow: $e');
+      print(st);
+    }
+  }
+
   Future<void> updateUserName(String newName) async {
     if (newName.isEmpty) {
       Get.snackbar('Lỗi', 'Tên không thể để trống');
       return;
     }
     try {
-      // === TẠO TỪ KHÓA MỚI ===
       String newUsername = newName.toLowerCase().replaceAll(' ', '');
       List<String> nameParts = newName.toLowerCase().split(' ');
       List<String> keywords = [newUsername, ...nameParts];
@@ -172,15 +279,66 @@ class ProfileController extends GetxController {
         'name': newName,
         'username': newUsername,
         'displayName': newName,
-        'searchKeywords': keywords, // <-- Cập nhật mảng từ khóa
+        'searchKeywords': keywords,
       });
-      // =======================
 
-      await getUserData(); // Tải lại
-      Get.back(); // Đóng dialog
+      await getUserData();
+      Get.back();
       Get.snackbar('Thành công', 'Đã cập nhật tên');
     } catch (e) {
       Get.snackbar('Lỗi', e.toString());
+    }
+  }
+
+  Future<String> findOrCreateChatRoom(String otherUserId) async {
+    String myUid = authController.userAccount.uid;
+    String roomId = (myUid.hashCode <= otherUserId.hashCode)
+        ? '${myUid}_${otherUserId}'
+        : '${otherUserId}_${myUid}';
+
+    DocumentReference roomRef = firestore.collection('chatRooms').doc(roomId);
+    DocumentSnapshot roomSnap = await roomRef.get();
+
+    if (roomSnap.exists) {
+      return roomId;
+    } else {
+      Timestamp now = Timestamp.now();
+
+      DocumentSnapshot myUserDoc =
+      await firestore.collection('users').doc(myUid).get();
+      DocumentSnapshot otherUserDoc =
+      await firestore.collection('users').doc(otherUserId).get();
+
+      final myDataRaw = myUserDoc.data();
+      final otherDataRaw = otherUserDoc.data();
+
+      if (myDataRaw == null || myDataRaw is! Map)
+        throw Exception('Không tìm thấy dữ liệu user của tôi');
+      if (otherDataRaw == null || otherDataRaw is! Map)
+        throw Exception('Không tìm thấy dữ liệu user kia');
+
+      var myData = Map<String, dynamic>.from(myDataRaw as Map);
+      var otherData = Map<String, dynamic>.from(otherDataRaw as Map);
+
+      Map<String, dynamic> participantInfo = {
+        myUid: {
+          'name': myData['username'] ?? '',
+          'avatar': myData['avatarUrl'] ?? '',
+        },
+        otherUserId: {
+          'name': otherData['username'] ?? '',
+          'avatar': otherData['avatarUrl'] ?? '',
+        }
+      };
+
+      await roomRef.set({
+        'participants': [myUid, otherUserId],
+        'participantInfo': participantInfo,
+        'lastMessage': 'Đã bắt đầu cuộc trò chuyện',
+        'lastMessageAt': now,
+        'lastMessageSenderId': myUid,
+      });
+      return roomId;
     }
   }
 }

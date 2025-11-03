@@ -1,4 +1,5 @@
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import '/constants.dart';
@@ -7,6 +8,10 @@ import '/models/post.dart';
 import '/views/screens/settings_screen.dart';
 import '/views/screens/location_screen.dart';
 import '/views/widgets/post_grid_item.dart';
+import '/views/screens/chat_detail_screen.dart';
+import 'add_post_screen.dart';
+// import '/views/widgets/post_grid_item.dart'; // Import bị lặp, xóa 1 dòng
+// import '/views/screens/chat_detail_screen.dart'; // Import bị lặp, xóa 1 dòng
 
 class ProfileScreen extends StatefulWidget {
   final String uid;
@@ -17,137 +22,153 @@ class ProfileScreen extends StatefulWidget {
 }
 
 class _ProfileScreenState extends State<ProfileScreen> {
-  final ProfileController profileController = Get.put(ProfileController());
-  final TextEditingController _nameController = TextEditingController();
+  // === SỬA LỖI 3 (Logic) ===
+  // Khởi tạo ProfileController với tag duy nhất là uid
+  // để tránh xung đột khi mở nhiều profile
+  late final ProfileController profileController;
 
   @override
   void initState() {
     super.initState();
+    // Gán controller với tag
+    profileController = Get.put(ProfileController(), tag: widget.uid);
     profileController.updateUserId(widget.uid);
   }
+  // ========================
 
   @override
   void dispose() {
     _nameController.dispose();
+    // Xóa controller bằng tag
+    if (Get.isRegistered<ProfileController>(tag: widget.uid)) {
+      Get.delete<ProfileController>(tag: widget.uid);
+    }
     super.dispose();
   }
 
-  // Hàm hiển thị Dialog Sửa tên
-  _showEditNameDialog() {
-    _nameController.text = profileController.user['name'] ?? '';
+  final TextEditingController _nameController = TextEditingController();
+
+  bool get isCurrentUser =>
+      widget.uid == authController.userAccount.uid;
+
+  void _showEditNameDialog() {
+    _nameController.text = profileController.user['name'] ?? ''; // Bỏ '!'
     Get.dialog(
       AlertDialog(
-        title: Text('Chỉnh sửa tên'),
+        title: const Text('Chỉnh sửa tên'),
         content: TextField(
           controller: _nameController,
-          decoration: InputDecoration(hintText: 'Nhập tên mới'),
+          decoration: const InputDecoration(hintText: 'Nhập tên mới'),
         ),
         actions: [
           TextButton(
             onPressed: () => Get.back(),
-            child: Text('Hủy'),
+            child: const Text('Hủy'),
           ),
           TextButton(
             onPressed: () {
               profileController.updateUserName(_nameController.text.trim());
             },
-            child: Text('Cập nhật'),
+            child: const Text('Cập nhật'),
           ),
         ],
       ),
     );
   }
 
+  // 🔹 Helper an toàn (giữ nguyên)
+  String _getFirstUrl(dynamic value) {
+    if (value == null) return '';
+    if (value is String && value.isNotEmpty) return value;
+    if (value is List && value.isNotEmpty && value.first is String) {
+      return value.first;
+    }
+    return '';
+  }
+
   @override
   Widget build(BuildContext context) {
-    // Dùng DefaultTabController để quản lý 3 tab
     return DefaultTabController(
       length: 3,
-      child: GetBuilder<ProfileController>(
-        init: ProfileController(),
-        builder: (controller) {
-          if (controller.user.isEmpty) {
-            return const Center(child: CircularProgressIndicator());
-          }
+      child: Obx(() {
+        // 'user' bây giờ là RxMap, nó không bao giờ 'null'
+        final user = profileController.user;
 
-          bool isCurrentUser = widget.uid == authController.user.uid;
-
-          return Scaffold(
-            appBar: AppBar(
-              // Lấy username (Biệt danh/id)
-              title: Text(
-                controller.user['username'] ?? 'Profile',
-                style: const TextStyle(fontWeight: FontWeight.bold),
-              ),
-              actions: [
-                // Nút Cài đặt (thay cho nút logout)
-                IconButton(
-                  onPressed: () {
-                    // Chỉ chủ sở hữu mới thấy Cài đặt
-                    if (isCurrentUser) {
-                      Get.to(() => const SettingsScreen());
-                    } else {
-                      // (Tùy chọn) Báo cáo người dùng khác
-                      Get.snackbar('Thông báo', 'Báo cáo người dùng (sắp có)');
-                    }
-                  },
-                  // Đổi icon tùy theo chủ sở hữu
-                  icon: Icon(isCurrentUser ? Icons.menu : Icons.more_horiz),
-                )
-              ],
-            ),
-            body: NestedScrollView(
-              headerSliverBuilder: (context, innerBoxIsScrolled) {
-                return [
-                  // Phần 1: Thông tin Header
-                  SliverToBoxAdapter(
-                    child: _buildHeaderInfo(controller, isCurrentUser),
-                  ),
-                  // Phần 2: Thanh Tab dính
-                  SliverPersistentHeader(
-                    delegate: _SliverAppBarDelegate(
-                      // === SỬA LỖI TẠI ĐÂY ===
-                      // Xóa 'const' vì buttonColor không phải là const
-                      TabBar(
-                        indicatorColor: buttonColor,
-                        tabs: const [ // 'tabs' có thể là const
-                          Tab(icon: Icon(Icons.grid_on)), // Bài đã đăng
-                          Tab(icon: Icon(Icons.favorite)), // Bài đã thích
-                          Tab(icon: Icon(Icons.bookmark)), // Địa điểm
-                        ],
-                      ),
-                    ),
-                    pinned: true,
-                  ),
-                ];
-              },
-              // Phần 3: Nội dung các Tab
-              body: Obx(() {
-                if (controller.isFetchingTabs) {
-                  return const Center(child: CircularProgressIndicator());
-                }
-                return TabBarView(
-                  children: [
-                    // Tab 1: Bài đã đăng
-                    _buildPostedGrid(controller),
-                    // Tab 2: Bài đã thích
-                    _buildLikedGrid(controller),
-                    // Tab 3: Địa điểm đã yêu thích
-                    _buildFavoritedList(controller),
-                  ],
-                );
-              }),
-            ),
+        // === SỬA LỖI UI KHÔNG UPDATE ===
+        // Vì 'user' là RxMap, nó sẽ không 'null'.
+        // Chúng ta kiểm tra 'isEmpty' để biết đã có dữ liệu hay chưa.
+        if (user.isEmpty) {
+          // ===============================
+          return const Scaffold(
+            body: Center(child: CircularProgressIndicator()),
           );
-        },
-      ),
+        }
+
+        bool isCurrentUser = widget.uid == authController.userAccount.uid;
+
+        return Scaffold(
+          appBar: AppBar(
+            title: Text(
+              user['username'] ?? 'Profile',
+              style: const TextStyle(fontWeight: FontWeight.bold),
+            ),
+            actions: [
+              IconButton(
+                onPressed: () {
+                  if (isCurrentUser) {
+                    Get.to(() => const SettingsScreen());
+                  } else {
+                    Get.snackbar('Thông báo', 'Báo cáo người dùng (sắp có)');
+                  }
+                },
+                icon: Icon(isCurrentUser ? Icons.menu : Icons.more_horiz),
+              ),
+            ],
+          ),
+          body: NestedScrollView(
+            headerSliverBuilder: (context, innerBoxIsScrolled) {
+              return [
+                SliverToBoxAdapter(
+                  child: _buildHeaderInfo(profileController, isCurrentUser),
+                ),
+                SliverPersistentHeader(
+                  delegate: _SliverAppBarDelegate(
+                    TabBar(
+                      indicatorColor: buttonColor,
+                      tabs: const [
+                        Tab(icon: Icon(Icons.grid_on)),
+                        Tab(icon: Icon(Icons.favorite)),
+                        Tab(icon: Icon(Icons.bookmark)),
+                      ],
+                    ),
+                  ),
+                  pinned: true,
+                ),
+              ];
+            },
+            body: Obx(() {
+              if (profileController.isFetchingTabs) {
+                return const Center(child: CircularProgressIndicator());
+              }
+              return TabBarView(
+                children: [
+                  _buildPostedGrid(profileController),
+                  _buildLikedGrid(profileController),
+                  _buildFavoritedList(profileController),
+                ],
+              );
+            }),
+          ),
+        );
+      }),
     );
   }
 
-  // --- CÁC WIDGET PHỤ ---
-
-  // Header Info (Avatar, Tên, Stats)
+  // --- Header info ---
   Widget _buildHeaderInfo(ProfileController controller, bool isCurrentUser) {
+    // 'controller.user' là RxMap, không cần '!'
+    final profileUrl = _getFirstUrl(controller.user['profilePhoto']);
+
     return Padding(
       padding: const EdgeInsets.all(16.0),
       child: Column(
@@ -158,64 +179,121 @@ class _ProfileScreenState extends State<ProfileScreen> {
               CircleAvatar(
                 radius: 40,
                 backgroundColor: Colors.grey[300],
-                backgroundImage: CachedNetworkImageProvider(
-                  controller.user['profilePhoto'] ?? '',
-                ),
+                backgroundImage: profileUrl.isNotEmpty
+                    ? CachedNetworkImageProvider(profileUrl)
+                    : null,
+                child: profileUrl.isEmpty
+                    ? const Icon(Icons.person, size: 40, color: Colors.grey)
+                    : null,
               ),
+              const SizedBox(width: 10),
               Expanded(
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                  children: [
-                    // Đổi tên stats
-                    _buildStatColumn('Bài đăng', controller.postedList.length.toString()),
-                    _buildStatColumn('Followers', controller.user['followers'] ?? '0'),
-                    _buildStatColumn('Following', controller.user['following'] ?? '0'),
-                  ],
+                child: SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: Row(
+                    children: [
+                      // Đọc dữ liệu từ Map (bỏ '!')
+                      _buildStatColumn(
+                          'Bài đăng', controller.postedList.length.toString()),
+                      const SizedBox(width: 20),
+                      _buildStatColumn('Bạn bè', controller.user['friends'] ?? '0'),
+                      const SizedBox(width: 20),
+                      _buildStatColumn('Followers', controller.user['followers'] ?? '0'),
+                      const SizedBox(width: 20),
+                      _buildStatColumn('Following', controller.user['following'] ?? '0'),
+                      const SizedBox(width: 20),
+                      _buildStatColumn('Likes', controller.user['likes'] ?? '0'),
+                    ],
+                  ),
                 ),
               ),
             ],
           ),
           const SizedBox(height: 10),
-          // Tên và Nút Sửa
           Row(
             children: [
               Text(
-                controller.user['name'] ?? '',
-                style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                controller.user['name'] ?? '', // Bỏ '!'
+                style:
+                const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
               ),
-              // Chỉ chủ sở hữu mới thấy nút Sửa
               if (isCurrentUser)
                 IconButton(
-                  icon: Icon(Icons.edit, size: 20),
+                  icon: const Icon(Icons.edit, size: 20),
                   onPressed: _showEditNameDialog,
-                )
+                ),
             ],
           ),
           const SizedBox(height: 10),
-          // Nút Follow/Unfollow
           if (!isCurrentUser)
-            Container(
-              width: double.infinity,
-              child: ElevatedButton(
-                onPressed: () {
-                  if (controller.isLoading) return;
-                  controller.followUser();
-                },
-                child: controller.isLoading
-                    ? const SizedBox(
-                  height: 20,
-                  width: 20,
-                  child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
-                )
-                    : Text(
-                  controller.user['isFollowing'] ? 'Đang Follow' : 'Follow',
+            Row(
+              children: [
+                Expanded(
+                  child: ElevatedButton(
+                    onPressed: () {
+                      if (controller.isLoading) return;
+                      controller.followUser();
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: controller.user['isFollowing'] == true
+                          ? Colors.grey
+                          : buttonColor,
+                    ),
+                    child: controller.isLoading
+                        ? const SizedBox(
+                      height: 20,
+                      width: 20,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Colors.white,
+                      ),
+                    )
+                        : Text(
+                      controller.user['isFollowing'] == true
+                          ? 'Đang Follow'
+                          : 'Follow',
+                    ),
+                  ),
                 ),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: controller.user['isFollowing']
-                      ? Colors.grey
-                      : buttonColor,
-                ),
-              ),
+                if (controller.user['isFollowing'] == true &&
+                    controller.user['isFollowedBy'] == true) ...[
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: ElevatedButton(
+                      onPressed: () async {
+                        String roomId = await controller.findOrCreateChatRoom(widget.uid);
+                        DocumentSnapshot myUserDoc = await firestore
+                            .collection('users')
+                            .doc(authController.userAccount.uid)
+                            .get();
+
+                        final myDataRaw = myUserDoc.data();
+                        if (myDataRaw == null || myDataRaw is! Map) return;
+                        var myData = Map<String, dynamic>.from(myDataRaw as Map);
+
+                        Get.to(() => ChatDetailScreen(
+                          roomId: roomId,
+                          receiverId: widget.uid,
+                          receiverName: controller.user['username'],
+                          receiverAvatar: controller.user['profilePhoto'],
+                          myInfo: {
+                            'name': myData['username'] ?? '',
+                            'avatar': myData['avatarUrl'] ?? '',
+                          },
+                          receiverInfo: {
+                            'name': controller.user['username'] ?? '',
+                            'avatar': controller.user['profilePhoto'] ?? '',
+                          },
+                        ));
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.black87,
+                      ),
+                      child: const Text('Nhắn tin'),
+                    ),
+                  ),
+                ]
+              ],
             ),
         ],
       ),
@@ -256,10 +334,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
       ),
       itemCount: controller.postedList.length,
       itemBuilder: (context, index) {
-        Post post = controller.postedList[index];
+        final Post post = controller.postedList[index];
+        final imageUrl = _getFirstUrl(post.imageUrls);
         return PostGridItem(
-          imageUrl: post.imageUrls.first,
+          imageUrl: imageUrl,
           likeCount: post.likes.length,
+          showDelete: isCurrentUser,
+          onDelete: () => controller.deletePostAndRefresh(post.id),
+          onEdit: () {
+            Get.to(() => AddPostScreen(existingPost: post));
+          },
         );
       },
     );
@@ -280,16 +364,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
       ),
       itemCount: controller.likedList.length,
       itemBuilder: (context, index) {
-        Post post = controller.likedList[index];
+        final Post post = controller.likedList[index];
+        final imageUrl = _getFirstUrl(post.imageUrls);
         return PostGridItem(
-          imageUrl: post.imageUrls.first,
+          imageUrl: imageUrl,
           likeCount: post.likes.length,
         );
       },
     );
   }
 
-  // Tab 3: List các địa điểm đã yêu thích
+  // Tab 3: List các địa điểm yêu thích
   Widget _buildFavoritedList(ProfileController controller) {
     if (controller.favoritedLocationsList.isEmpty) {
       return const Center(child: Text('Chưa yêu thích địa điểm nào'));
@@ -297,12 +382,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
     return ListView.builder(
       itemCount: controller.favoritedLocationsList.length,
       itemBuilder: (context, index) {
-        var favLocation = controller.favoritedLocationsList[index];
+        final favLocation = controller.favoritedLocationsList[index];
         return ListTile(
           leading: const Icon(Icons.location_on),
-          title: Text(favLocation.locationId), // locationId chính là Tên
+          title: Text(favLocation.locationId),
           onTap: () {
-            // Điều hướng đến trang LocationScreen
             Get.to(() => LocationScreen(locationName: favLocation.locationId));
           },
         );
@@ -313,8 +397,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
 // Class hỗ trợ cho TabBar dính (pinned)
 class _SliverAppBarDelegate extends SliverPersistentHeaderDelegate {
-  _SliverAppBarDelegate(this._tabBar);
   final TabBar _tabBar;
+  _SliverAppBarDelegate(this._tabBar);
 
   @override
   double get minExtent => _tabBar.preferredSize.height;
@@ -322,9 +406,7 @@ class _SliverAppBarDelegate extends SliverPersistentHeaderDelegate {
   double get maxExtent => _tabBar.preferredSize.height;
 
   @override
-  Widget build(
-      BuildContext context, double shrinkOffset, bool overlapsContent) {
-    // Dùng Theme.of(context).scaffoldBackgroundColor để tự động đổi màu Sáng/Tối
+  Widget build(BuildContext context, double shrinkOffset, bool overlapsContent) {
     return Container(
       color: Theme.of(context).scaffoldBackgroundColor,
       child: _tabBar,
@@ -332,7 +414,5 @@ class _SliverAppBarDelegate extends SliverPersistentHeaderDelegate {
   }
 
   @override
-  bool shouldRebuild(_SliverAppBarDelegate oldDelegate) {
-    return false;
-  }
+  bool shouldRebuild(_SliverAppBarDelegate oldDelegate) => false;
 }

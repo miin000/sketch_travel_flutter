@@ -6,31 +6,72 @@ import '/constants.dart';
 import '/controllers/upload_post_controller.dart';
 import '/models/osm_location.dart';
 import '/views/screens/search_screen.dart';
+import '/models/post.dart';
 
 class AddPostScreen extends StatefulWidget {
-  const AddPostScreen({Key? key}) : super(key: key);
+  final Post? existingPost;
+
+  const AddPostScreen({Key? key, this.existingPost}) : super(key: key);
 
   @override
   State<AddPostScreen> createState() => _AddPostScreenState();
 }
 
 class _AddPostScreenState extends State<AddPostScreen> {
-  final UploadPostController _uploadPostController = Get.put(UploadPostController());
+  final UploadPostController _uploadPostController = Get.put(UploadPostController(), tag: UniqueKey().toString());
+
   final TextEditingController _descriptionController = TextEditingController();
   final PageController _pageController = PageController();
+
+  List<String> existingImages = [];
+  bool isEditing = false;
+
+  @override
+  void initState() {
+    super.initState();
+
+    // Nếu có bài viết cũ → chuyển sang chế độ chỉnh sửa
+    if (widget.existingPost != null) {
+      final post = widget.existingPost!;
+      isEditing = true;
+
+      _descriptionController.text = post.description;
+      existingImages = List<String>.from(post.imageUrls);
+
+      // Nạp lại địa điểm cũ
+      if (post.locationName.isNotEmpty) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          _uploadPostController.selectedLocation.value = OsmLocation(
+            displayName: post.locationName,
+            city: '',
+            country: '',
+            lat: 0,
+            lon: 0,
+          );
+        });
+      }
+
+      // Nếu chưa có ảnh mới, hiển thị ảnh cũ
+      if (_uploadPostController.pickedImageBytesList.isEmpty) {
+        _uploadPostController.loadExistingImages(existingImages);
+      }
+    }
+  }
 
   @override
   void dispose() {
     _descriptionController.dispose();
     _pageController.dispose();
+
+    //Dọn sạch controller mỗi khi rời màn hình
+    _uploadPostController.clearImages();
+    _uploadPostController.clearSelectedLocation();
+
     super.dispose();
   }
 
   void _openLocationPicker() async {
-    // Đẩy SearchScreen ở chế độ picker
     final result = await Get.to(() => SearchScreen(isPickerMode: true));
-
-    // Nhận kết quả trả về
     if (result != null && result is OsmLocation) {
       _uploadPostController.selectLocation(result);
     }
@@ -40,7 +81,10 @@ class _AddPostScreenState extends State<AddPostScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Đăng bài viết mới'),
+        title: Text(
+          isEditing ? 'Chỉnh sửa bài viết' : 'Đăng bài viết mới',
+          style: const TextStyle(fontWeight: FontWeight.bold),
+        ),
         backgroundColor: backgroundColor,
         actions: [
           Obx(() {
@@ -51,7 +95,6 @@ class _AddPostScreenState extends State<AddPostScreen> {
                   child: SizedBox(
                     width: 20,
                     height: 20,
-                    // Dùng màu của theme (Trắng ở Dark mode, Đen ở Light mode)
                     child: CircularProgressIndicator(
                       strokeWidth: 2,
                       color: Theme.of(context).iconTheme.color,
@@ -62,17 +105,28 @@ class _AddPostScreenState extends State<AddPostScreen> {
             }
 
             return IconButton(
-              onPressed: () {
-                if (_descriptionController.text.isEmpty) {
-                  Get.snackbar('Lỗi', 'Vui lòng nhập mô tả');
-                  return;
+              icon: const Icon(Icons.check),
+              onPressed: () async {
+                final desc = _descriptionController.text.trim();
+                final images = _uploadPostController.getCurrentImageUrls();
+                final locationName =
+                    _uploadPostController.selectedLocation.value?.displayName ?? '';
+
+                if (isEditing && widget.existingPost != null) {
+                  await _uploadPostController.updatePost(
+                    widget.existingPost!.id,
+                    desc,
+                    images,
+                    locationName,
+                  );
+                } else {
+                  await _uploadPostController.uploadPost(
+                    desc,
+                    images,
+                    locationName,
+                  );
                 }
-                // Controller sẽ tự kiểm tra location
-                _uploadPostController.uploadPost(
-                  _descriptionController.text.trim(),
-                );
               },
-              icon: Icon(Icons.check),
             );
           }),
         ],
@@ -82,9 +136,12 @@ class _AddPostScreenState extends State<AddPostScreen> {
           padding: const EdgeInsets.all(16.0),
           child: Column(
             children: [
-              // Vùng chọn ảnh và preview
+              // === Khu vực ảnh ===
               Obx(() {
-                if (_uploadPostController.pickedImageBytesList.isEmpty) {
+                final hasNewImages = _uploadPostController.pickedImageBytesList.isNotEmpty;
+                final hasOldImages = _uploadPostController.existingImageUrls.isNotEmpty;
+
+                if (!hasNewImages && !hasOldImages) {
                   return GestureDetector(
                     onTap: () => _uploadPostController.pickImages(),
                     child: Container(
@@ -104,52 +161,81 @@ class _AddPostScreenState extends State<AddPostScreen> {
                       ),
                     ),
                   );
-                } else {
-                  // Hiển thị carousel preview ảnh
-                  return Column(
-                    children: [
-                      Container(
-                        height: 300,
-                        child: PageView.builder(
-                          controller: _pageController,
-
-                          physics: const ClampingScrollPhysics(),
-
-                          itemCount: _uploadPostController.pickedImageBytesList.length,
-                          itemBuilder: (context, index) {
-                            return ClipRRect(
-                              borderRadius: BorderRadius.circular(10),
-                              child: Image.memory(
-                                _uploadPostController.pickedImageBytesList[index],
-                                fit: BoxFit.cover,
-                              ),
-                            );
-                          },
-                        ),
-                      ),
-                      SizedBox(height: 10),
-                      // Dấu chấm tròn
-                      SmoothPageIndicator(
-                        controller: _pageController,
-                        count: _uploadPostController.pickedImageBytesList.length,
-                        effect: WormEffect(
-                          dotHeight: 8,
-                          dotWidth: 8,
-                          activeDotColor: buttonColor ?? Colors.red,
-                          dotColor: Colors.grey,
-                        ),
-                      ),
-                      TextButton.icon(
-                        onPressed: () => _uploadPostController.clearImages(),
-                        icon: Icon(Icons.delete_outline, color: Colors.grey),
-                        label: Text('Xóa ảnh', style: TextStyle(color: Colors.grey)),
-                      )
-                    ],
-                  );
                 }
+
+                // Combine hai danh sách ảnh
+                final allImages = [
+                  ..._uploadPostController.existingImageUrls,
+                  ..._uploadPostController.pickedImageBytesList,
+                ];
+
+                return Column(
+                  children: [
+                    SizedBox(
+                      height: 300,
+                      child: PageView.builder(
+                        controller: _pageController,
+                        itemCount: allImages.length,
+                        itemBuilder: (context, index) {
+                          final image = allImages[index];
+                          final isOldImage = index < _uploadPostController.existingImageUrls.length;
+
+                          return Stack(
+                            children: [
+                              Positioned.fill(
+                                child: ClipRRect(
+                                  borderRadius: BorderRadius.circular(10),
+                                  child: isOldImage
+                                      ? Image.network(image as String, fit: BoxFit.cover)
+                                      : Image.memory(image as Uint8List, fit: BoxFit.cover),
+                                ),
+                              ),
+                              Positioned(
+                                top: 10,
+                                right: 10,
+                                child: GestureDetector(
+                                  onTap: () {
+                                    if (isOldImage) {
+                                      _uploadPostController.removeExistingImageAt(index);
+                                    } else {
+                                      final newIndex =
+                                          index - _uploadPostController.existingImageUrls.length;
+                                      _uploadPostController.removePickedImageAt(newIndex);
+                                    }
+                                  },
+                                  child: Container(
+                                    decoration: BoxDecoration(
+                                      color: Colors.black.withOpacity(0.6),
+                                      shape: BoxShape.circle,
+                                    ),
+                                    padding: const EdgeInsets.all(6),
+                                    child: const Icon(Icons.close, color: Colors.white, size: 18),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          );
+                        },
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    SmoothPageIndicator(
+                      controller: _pageController,
+                      count: allImages.length,
+                      effect: WormEffect(
+                        dotHeight: 8,
+                        dotWidth: 8,
+                        activeDotColor: buttonColor!,
+                        dotColor: Colors.grey,
+                      ),
+                    ),
+                  ],
+                );
               }),
-              SizedBox(height: 20),
-              // TextField cho Mô tả
+
+              const SizedBox(height: 20),
+
+              // === Mô tả ===
               TextField(
                 controller: _descriptionController,
                 decoration: InputDecoration(
@@ -163,31 +249,36 @@ class _AddPostScreenState extends State<AddPostScreen> {
                 ),
                 maxLines: 4,
               ),
-              SizedBox(height: 20),
-              // TextField cho Địa điểm
+
+              const SizedBox(height: 20),
+
+              // === Địa điểm ===
               Obx(() {
-                final selectedLocation = _uploadPostController.selectedLocation;
+                final selectedLocation =
+                    _uploadPostController.selectedLocation.value;
                 return ListTile(
                   shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(4),
-                      side: BorderSide(
-                        color: selectedLocation != null
-                            ? (buttonColor ?? Colors.red)
-                            : borderColor,
-                        width: selectedLocation != null ? 2 : 1,
-                      )
+                    borderRadius: BorderRadius.circular(4),
+                    side: BorderSide(
+                      color: selectedLocation != null
+                          ? buttonColor!
+                          : borderColor,
+                      width: selectedLocation != null ? 2 : 1,
+                    ),
                   ),
                   leading: Icon(
-                      Icons.location_on,
-                      color: selectedLocation != null
-                          ? buttonColor
-                          : Colors.grey
+                    Icons.location_on,
+                    color:
+                    selectedLocation != null ? buttonColor : Colors.grey,
                   ),
                   title: Text(
-                    selectedLocation?.name ?? 'Thêm địa điểm (ví dụ: Vịnh Hạ Long)',
+                    selectedLocation?.displayName ??
+                        'Thêm địa điểm (ví dụ: Vịnh Hạ Long)',
                     style: TextStyle(
                       color: selectedLocation != null
-                          ? (context.theme.brightness == Brightness.dark ? Colors.white : Colors.black)
+                          ? (context.theme.brightness == Brightness.dark
+                          ? Colors.white
+                          : Colors.black)
                           : Colors.grey,
                       fontWeight: selectedLocation != null
                           ? FontWeight.bold
@@ -195,13 +286,14 @@ class _AddPostScreenState extends State<AddPostScreen> {
                     ),
                     overflow: TextOverflow.ellipsis,
                   ),
-                  trailing: (selectedLocation != null)
-                      ? IconButton( // Nút "X" để xóa địa điểm
-                    icon: Icon(Icons.close),
-                    onPressed: () => _uploadPostController.clearSelectedLocation(),
+                  trailing: selectedLocation != null
+                      ? IconButton(
+                    icon: const Icon(Icons.close),
+                    onPressed: () => _uploadPostController
+                        .clearSelectedLocation(),
                   )
                       : null,
-                  onTap: _openLocationPicker, // <-- Gọi hàm mở search
+                  onTap: _openLocationPicker,
                 );
               }),
             ],

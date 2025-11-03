@@ -8,13 +8,14 @@ import '/views/screens/add_post_screen.dart';
 import '/views/screens/profile_screen.dart';
 import '/views/screens/search_screen.dart';
 import '/views/screens/post_feed_screen.dart';
+import '/views/screens/mailbox_screen.dart';
 
 List pages=[
   PostFeedScreen(),
   SearchScreen(),
   AddPostScreen(),
-  Text('Message Screen'),
-  ProfileScreen(uid: authController.user.uid),
+  MailboxScreen(),
+  ProfileScreen(uid: authController.userAccount.uid),
 
 ];
 

@@ -42,7 +42,7 @@ class PostFeedScreen extends StatelessWidget {
   // Widget build mỗi trang (mỗi bài post)
   Widget _buildPostPage(BuildContext context, Post post) {
     final size = MediaQuery.of(context).size;
-    final currentUid = authController.user.uid;
+    final currentUid = authController.userAccount.uid;
     // Controller cho carousel ảnh
     final PageController _imageCarouselController = PageController();
 

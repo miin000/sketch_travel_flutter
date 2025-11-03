@@ -1,49 +1,56 @@
 import 'package:flutter/material.dart';
-import 'package:cached_network_image/cached_network_image.dart';
 
 class PostGridItem extends StatelessWidget {
   final String imageUrl;
   final int likeCount;
+  final bool showDelete;
+  final VoidCallback? onDelete;
+  final VoidCallback? onEdit;
 
   const PostGridItem({
     Key? key,
     required this.imageUrl,
     required this.likeCount,
+    this.showDelete = false,
+    this.onDelete,
+    this.onEdit,
   }) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
     return Stack(
-      fit: StackFit.expand,
       children: [
-        CachedNetworkImage(
-          imageUrl: imageUrl,
-          fit: BoxFit.cover,
-          placeholder: (context, url) => Container(color: Colors.grey[850]),
-          errorWidget: (context, url, error) => Icon(Icons.error),
+        Positioned.fill(
+          child: Image.network(imageUrl, fit: BoxFit.cover),
         ),
-        // Hiển thị số lượng tim
         Positioned(
           bottom: 5,
           left: 5,
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-            decoration: BoxDecoration(
-              color: Colors.black.withOpacity(0.6),
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: Row(
-              children: [
-                Icon(Icons.favorite, color: Colors.white, size: 14),
-                const SizedBox(width: 4),
-                Text(
-                  likeCount.toString(),
-                  style: const TextStyle(color: Colors.white, fontSize: 12),
-                ),
-              ],
-            ),
+          child: Row(
+            children: [
+              const Icon(Icons.favorite, color: Colors.white, size: 16),
+              Text('$likeCount', style: const TextStyle(color: Colors.white)),
+            ],
           ),
         ),
+        if (showDelete) ...[
+          Positioned(
+            top: 5,
+            right: 5,
+            child: IconButton(
+              icon: const Icon(Icons.delete, color: Colors.redAccent),
+              onPressed: onDelete,
+            ),
+          ),
+          Positioned(
+            top: 5,
+            right: 45, // đặt lệch qua trái chút để không đè lên nút delete
+            child: IconButton(
+              icon: const Icon(Icons.edit, color: Colors.white),
+              onPressed: onEdit,
+            ),
+          ),
+        ],
       ],
     );
   }

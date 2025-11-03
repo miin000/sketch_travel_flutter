@@ -10,6 +10,7 @@ class User {
   final String? bio;
   final Timestamp createdAt;
   final List<String> searchKeywords;
+  final List<String> friends;
 
   User({
     required this.uid,
@@ -21,6 +22,7 @@ class User {
     this.bio,
     required this.createdAt,
     this.searchKeywords = const [],
+    this.friends = const [],
   });
 
   Map<String, dynamic> toJson() => {
@@ -33,6 +35,7 @@ class User {
     'bio': bio,
     'createdAt': createdAt,
     'searchKeywords': searchKeywords,
+    'friends': friends,
   };
 
   factory User.fromJson(Map<String, dynamic> json) => User(
@@ -45,5 +48,6 @@ class User {
     bio: json['bio'],
     createdAt: json['createdAt'],
     searchKeywords: List<String>.from(json['searchKeywords'] ?? []),
+    friends: List<String>.from(json['friends'] ?? []),
   );
 }

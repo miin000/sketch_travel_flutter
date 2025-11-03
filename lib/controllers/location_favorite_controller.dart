@@ -20,7 +20,7 @@ class LocationFavoriteController extends GetxController {
 
     var query = await firestore
         .collection('favoriteLocations') // Collection yêu thích riêng
-        .where('userId', isEqualTo: authController.user.uid)
+        .where('userId', isEqualTo: authController.userAccount.uid)
         .where('locationId', isEqualTo: _locationId)
         .get();
 
@@ -30,7 +30,7 @@ class LocationFavoriteController extends GetxController {
   // Hàm nhấn nút Yêu thích / Bỏ yêu thích
   Future<void> toggleFavorite() async {
     try {
-      String uid = authController.user.uid;
+      String uid = authController.userAccount.uid;
 
       if (_isFavorite.value) {
         // Nếu đã thích -> Bỏ thích

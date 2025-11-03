@@ -86,7 +86,7 @@ class LocationController extends GetxController {
       }
       _isLoading.value = true;
 
-      String uid = authController.user.uid;
+      String uid = authController.userAccount.uid;
       DocumentSnapshot userDoc = await firestore.collection('users').doc(uid).get();
 
       // Thêm kiểm tra an toàn

@@ -9,12 +9,14 @@ import 'controllers/theme_controller.dart';
 import 'views/screens/auth/login_screen.dart';
 
 import 'firebase_options.dart';
-
+import 'package:timeago/timeago.dart' as timeago;
 import 'package:flutter/gestures.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await GetStorage.init();
+
+  timeago.setLocaleMessages('vi', timeago.ViMessages());
 
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,

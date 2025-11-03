@@ -23,7 +23,7 @@ class UserSearchController extends GetxController {
           .map((QuerySnapshot query) {
 
         List<User> retVal = [];
-        String currentUserId = authController.user.uid;
+        String currentUserId = authController.userAccount.uid;
 
         for (var element in query.docs) {
           User user = User.fromJson(element.data() as Map<String, dynamic>);

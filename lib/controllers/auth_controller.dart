@@ -12,19 +12,20 @@ import 'cloudinary_controller.dart';
 
 class AuthController extends GetxController {
   static AuthController instance = Get.find();
-  late Rx<User?> _user;
+
+  final Rx<User?> user = Rx<User?>(firebaseAuth.currentUser);
 
   final Rx<Uint8List?> _pickedImageBytes = Rx<Uint8List?>(null);
   Uint8List? get profilePhoto => _pickedImageBytes.value;
-  User get user => _user.value!;
+
+  User get userAccount => user.value!;
 
   @override
   void onReady() {
     super.onReady();
-    _user = Rx<User?>(firebaseAuth.currentUser);
-    _user.bindStream(firebaseAuth.authStateChanges());
+    user.bindStream(firebaseAuth.authStateChanges());
     print("AuthController: Bắt đầu lắng nghe trạng thái đăng nhập...");
-    ever(_user, _setInitialScreen);
+    ever(user, _setInitialScreen);
   }
 
   void _setInitialScreen(User? user) {

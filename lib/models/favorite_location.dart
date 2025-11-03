@@ -20,10 +20,22 @@ class FavoriteLocation {
     'createdAt': createdAt,
   };
 
-  factory FavoriteLocation.fromJson(Map<String, dynamic> json) => FavoriteLocation(
-    id: json['id'],
-    userId: json['userId'],
-    locationId: json['locationId'],
-    createdAt: json['createdAt'],
-  );
+  factory FavoriteLocation.fromJson(Map<String, dynamic> json) {
+    return FavoriteLocation(
+      id: json['id'] ?? '',
+      userId: json['userId'] ?? '',
+      locationId: json['locationId'] ?? '',
+      createdAt: json['createdAt'] ?? Timestamp.now(),
+    );
+  }
+
+  /// 🔹 Object trống để tránh lỗi null trong ListBuilder
+  factory FavoriteLocation.empty() {
+    return FavoriteLocation(
+      id: '',
+      userId: '',
+      locationId: '',
+      createdAt: Timestamp.now(),
+    );
+  }
 }
