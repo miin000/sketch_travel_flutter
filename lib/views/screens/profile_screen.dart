@@ -200,8 +200,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       const SizedBox(width: 20),
                       _buildStatColumn('Followers', controller.user['followers'] ?? '0'),
                       const SizedBox(width: 20),
-                      _buildStatColumn('Following', controller.user['following'] ?? '0'),
-                      const SizedBox(width: 20),
                       _buildStatColumn('Likes', controller.user['likes'] ?? '0'),
                     ],
                   ),
