@@ -14,16 +14,8 @@ class CustomIcon extends StatelessWidget {
             margin: EdgeInsets.only(left: 10,),
             width: 38,
             decoration: BoxDecoration(
-              color: Color.fromARGB(255, 250, 45, 108),
-              borderRadius: BorderRadius.circular(7)
-            ),
-          ),
-          Container(
-            margin: EdgeInsets.only(left: 10,),
-            width: 38,
-            decoration: BoxDecoration(
                 color: Color.fromARGB(255, 250, 45, 108),
-                borderRadius: BorderRadius.circular(7)
+                borderRadius: BorderRadius.circular(30)
             ),
           ),
           Container(
@@ -31,7 +23,7 @@ class CustomIcon extends StatelessWidget {
             width: 38,
             decoration: BoxDecoration(
                 color: Color.fromARGB(255, 32, 211, 234),
-                borderRadius: BorderRadius.circular(7)
+                borderRadius: BorderRadius.circular(30)
             ),
           ),
           Center(
@@ -40,7 +32,7 @@ class CustomIcon extends StatelessWidget {
               width: 38,
               decoration: BoxDecoration(
                   color: Colors.white,
-                  borderRadius: BorderRadius.circular(7)
+                  borderRadius: BorderRadius.circular(30)
               ),
               child: Icon(Icons.add,color: Colors.black,size: 20,),
             ),

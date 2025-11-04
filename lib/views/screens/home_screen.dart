@@ -56,7 +56,7 @@ class _HomeScreenState extends State<HomeScreen> {
               pageIdx == 3 ? Icons.mail : Icons.mail_outline,
               size: 30,
             ),
-            label: 'Inbox',
+            label: 'Mailbox',
           ),
           BottomNavigationBarItem(
             icon: Icon(

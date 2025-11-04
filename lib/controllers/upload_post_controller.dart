@@ -12,19 +12,19 @@ import 'package:flutter/widgets.dart';
 class UploadPostController extends GetxController {
   final ImagePicker _picker = ImagePicker();
 
-  /// Ảnh mới chọn
+  // Ảnh mới chọn
   RxList<Uint8List> pickedImageBytesList = <Uint8List>[].obs;
 
-  /// Ảnh cũ khi chỉnh sửa
+  // Ảnh cũ khi chỉnh sửa
   RxList<String> existingImageUrls = <String>[].obs;
 
-  /// Địa điểm
+  // Địa điểm
   Rxn<OsmLocation> selectedLocation = Rxn<OsmLocation>();
 
-  /// Loading
+  // Loading
   RxBool isLoading = false.obs;
 
-  /// --- CHỌN ẢNH ---
+  //CHỌN ẢNH
   Future<void> pickImages() async {
     try {
       final pickedFiles = await _picker.pickMultiImage(imageQuality: 85);
@@ -156,7 +156,7 @@ class UploadPostController extends GetxController {
     }
   }
 
-  /// --- CẬP NHẬT BÀI VIẾT ---
+  // CẬP NHẬT BÀI VIẾT
   Future<void> updatePost(
     String postId,
     String description,
