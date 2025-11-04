@@ -4,6 +4,14 @@
 
 Người dùng có thể chia sẻ các khoảnh khắc (bài đăng có nhiều ảnh) từ chuyến đi của mình, gắn thẻ (tag) các địa điểm cụ thể. Sau đó, cộng đồng có thể khám phá các địa điểm đó để xem tất cả bài đăng, đọc và viết đánh giá, và kết nối với những người dùng khác.
 
+## Member
+- [Phạm Quang Minh - 23010489](https://github.com/miin000)
+
+- [Nguyễn Văn Quang - 23011955](https://github.com/JCakaQuang)
+
+## Link youtube demo: 
+- [https://youtu.be/sloEyhPcLKA](https://youtu.be/sloEyhPcLKA)
+
 ## ✨ Tính năng chính
 
 Dự án này bao gồm một bộ tính năng xã hội và khám phá phong phú:
